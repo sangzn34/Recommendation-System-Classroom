@@ -31,6 +31,12 @@
     <Folder Include="recommender\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="data\data.json" />
+    <Content Include="data\data1.json" />
+    <Content Include="data\data2.json" />
+    <Content Include="data\data3.json" />
+    <Content Include="data\data4.json" />
+    <Content Include="data\data5.json" />
     <Content Include="data\links.csv" />
     <Content Include="data\movies.csv" />
     <Content Include="data\ratings.csv" />

@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from pprint import pprint
+import json
 
 class recommender:
     def __init__(self, data_rating=None):
@@ -13,23 +14,62 @@ class recommender:
         # keyword <- colums
         self.columns = list()
         # similarity table
-        self.sim_table = dict()
+        self.sim_table = []
+        self.k = 1
+        self.colK = []
+        self.data_rating_k = []
         if self.data_rating == None:
             print("Rating table is None. Use setratingtable(value) to setup it.")
         else:
             self.set_rating_table_rows_columns()
-        
+    def set_k(self, k = 1):
+        self.k = k
+
+    def cal_find_best_k(self):
+        persent = []
+        for k in range(self.k):
+            file = 'data/data'+str(k+1)+'.json'
+            with open(file) as json_data:
+                d = json.load(json_data)
+                count = 0
+                sum = 0
+                for object in d:
+                    for movie in self.colK[k]:
+                        if movie not in self.data_rating[object]:
+                            break
+                        p = 0
+                        down = 0
+                        for target in d[object]:
+                            try:
+                                p += d[object][target]["sim"] * self.data_rating[target][movie] 
+                                down +=  d[object][target]["sim"]
+                            except (KeyError, TypeError):
+                                p += 0
+                        if down != 0:
+                            p = p / down
+                        sum = abs(p - self.data_rating[object][movie])
+                        count += 1
+                persent.append(sum)
+        print(persent)
+
     def calculate_sim_table(self):
         # exemple app data to sim table ( 'Alice' -> 'Boom' )
-        for active_user in self.rows:
-            for target_user in self.rows:
-                if active_user != target_user:  # same user
-                    buffer = self.sim(active_user, target_user)
-                    if active_user not in self.sim_table:  # not has data
-                        self.sim_table.update({active_user: {}})
-                    if target_user not in self.sim_table[active_user]:
-                        self.sim_table[active_user].update({target_user: buffer})
-        pprint(self.sim_table)
+        self.sim_table = []
+        for k in range(self.k):
+            self.sim_table.append(dict())
+            for active_user in self.rows:
+                for target_user in self.rows:
+                    if active_user != target_user:  # same user
+                        buffer = self.sim(k, active_user, target_user)
+                        if active_user not in self.sim_table[k]:  # not has data
+                            self.sim_table[k].update({active_user: {}})
+                        if target_user not in self.sim_table[k][active_user]:
+                            self.sim_table[k][active_user].update({target_user: buffer})
+            with open('data/data' + str(k+1) + '.json', 'w') as outfile:
+                json.dump(self.sim_table[k], outfile)
+    
+    
+
 
     def set_rating_table(self, rating_table):
         self.data_rating = rating_table
@@ -41,8 +81,34 @@ class recommender:
             for key in self.data_rating[object]:
                 if key not in self.columns:
                     self.columns.append(key)
+        len_col = len(self.columns)
+        partition = int(len_col / self.k)
+        count = 0
+        colK = []
+        data_rating_k = []
+        for i in range(self.k):
+            self.data_rating_k.append(dict())
+            self.colK.append(dict()); 
+            for j in range(partition):
+                self.colK[len(self.colK) - 1].update({self.columns[count] : True})
+                count += 1
+        if count != len_col:
+             for i in range(count, len_col):
+                self.colK[len(self.colK) - 1].update({self.columns[count] : True})
+                count += 1
+        for object in self.data_rating:
+            for key in self.data_rating[object]:
+                i = 0
+                for col in self.colK:
+                    if key in col:
+                        if object not in self.data_rating_k[i]:
+                            self.data_rating_k[i].update({object: {}})
+                        self.data_rating_k[i][object].update({key:  self.data_rating[object][key]})
+                    i += 1
+
+                
     
-    def sim(self,value_a, value_b):
+    def sim(self, k, value_a, value_b):
         # list_a -> []
         # list_b -> []
         list_a = list()
@@ -50,7 +116,10 @@ class recommender:
 
 
         # ***example value_a = Alice , value_b = Boom
-        match = set(self.data_rating[value_a]).intersection(self.data_rating[value_b])
+        try:
+            match = set(self.data_rating_k[k][value_a]).intersection(self.data_rating_k[k][value_b])
+        except KeyError:
+            return None
         # value_a -> data -> [ a : 2 , b : 4 , c : 1 , e : 4 ]
         # value_b -> data -> [ a : 1 , c : 3 , d : 3 , f : 2 ]
 
@@ -63,8 +132,8 @@ class recommender:
         # list_a -> []
         # list_b -> []
         for p in match:
-            list_a.append(float(self.data_rating[value_a][p]))
-            list_b.append(float(self.data_rating[value_b][p]))
+            list_a.append(float(self.data_rating_k[k][value_a][p]))
+            list_b.append(float(self.data_rating_k[k][value_b][p]))
         # insert data to list a and b
         # list_a -> [ 2 , 1 ]
         # list_b -> [ 1 , 3 ]

@@ -7,7 +7,6 @@ if __name__ == "__main__":
     given = dict()
     file = 'data/ratings'
 
-
     with open(file+'.csv','r') as csvfile:
         reader = csv.DictReader(csvfile)
         for data in reader:
@@ -21,6 +20,10 @@ if __name__ == "__main__":
     # input data(given) to object [ given 
     # 
     # -> file .json ]
+    object.set_k(5)
     object.set_rating_table(given)
 
-    object.calculate_sim_table()
+    #object.calculate_sim_table()
+
+    object.cal_find_best_k()
+    
