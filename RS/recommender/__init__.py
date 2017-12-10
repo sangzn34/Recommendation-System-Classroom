@@ -16,6 +16,7 @@ class recommender:
         # similarity table
         self.sim_table = []
         self.k = 1
+        self.best_k = 0
         self.colK = []
         self.data_rating_k = []
         if self.data_rating == None:
@@ -24,6 +25,43 @@ class recommender:
             self.set_rating_table_rows_columns()
     def set_k(self, k = 1):
         self.k = k
+    
+    def set_best_k(self, k = 1):
+        self.best_k = k
+
+    def pred(self, active_user, position_pred, sim_table):
+        up = 0
+        down = 0
+        for user in self.data_rating:
+            try:
+                up += sim_table[active_user][user]["sim"] * self.data_rating[user][position_pred]
+                down += abs(sim_table[active_user][user]["sim"])
+            except (KeyError, TypeError):
+                up += 0
+        if down == 0:
+            down = 1
+        p = float(up / abs(down))
+        return p
+
+    def pred_movie(self, active_user):
+        movie_list = dict()
+        file = 'data/data'+str(self.best_k+1)+'.json'
+        if active_user not in self.rows:
+            return movie_list
+        threshold = 4
+        num = 5
+        with open(file) as json_data:
+           d = json.load(json_data)
+           count = 0
+           for movie in self.columns:
+               if movie not in self.data_rating[active_user]:
+                    p = self.pred(active_user, movie, d)
+                    if p >= threshold:
+                        movie_list.update({movie : p})
+                        count += 1
+                    if count >= num:
+                        break
+        return movie_list
 
     def cal_find_best_k(self):
         persent = []
@@ -35,22 +73,36 @@ class recommender:
                 sum = 0
                 for object in d:
                     for movie in self.colK[k]:
+                        r = 0
                         if movie not in self.data_rating[object]:
-                            break
+                            continue
+                            #r = self.pred(object, movie, d)
+                        #else:
+                        r =  self.data_rating[object][movie] 
                         p = 0
                         down = 0
                         for target in d[object]:
                             try:
-                                p += d[object][target]["sim"] * self.data_rating[target][movie] 
-                                down +=  d[object][target]["sim"]
+                                if d[object][target] == None or self.data_rating[target][movie] == None:
+                                    continue 
+                                p += d[object][target]["sim"] * self.data_rating[target][movie]
+                                down +=  abs(d[object][target]["sim"])
                             except (KeyError, TypeError):
                                 p += 0
                         if down != 0:
-                            p = p / down
-                        sum = abs(p - self.data_rating[object][movie])
-                        count += 1
-                persent.append(sum)
-        print(persent)
+                            p = p / abs(down)
+                            sum += np.power(p - r, 2)
+                            count += 1
+                            a = sum / count
+                if count == 0:
+                    count = 1
+                RMSE = np.sqrt(sum / count)
+                persent.append(RMSE)
+        min = np.min(persent)
+        for i in range(len(persent)):
+            if min == persent[i]:
+                self.best_k = i
+        print(persent) 
 
     def calculate_sim_table(self):
         # exemple app data to sim table ( 'Alice' -> 'Boom' )
