@@ -34,6 +34,7 @@ if __name__ == "__main__":
     object.set_rating_table(given)
 
     #object.calculate_sim_table()
+    #object.cal_find_best_k()
 
     object.set_best_k(0)
     active_user = 0
